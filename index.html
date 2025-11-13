@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Rockerz | AI Road Safety Platform</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- html2pdf for report download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#020617', // Darker Slate
+                            card: '#0f172a',
+                            primary: '#6366f1', // Indigo
+                            accent: '#10b981', // Emerald
+                            danger: '#f43f5e', // Rose
+                            warning: '#f59e0b', // Amber
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'scan': 'scan 2s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        scan: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Advanced Glass Effect */
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Neon Glows */
+        .glow-primary { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+        .glow-danger { box-shadow: 0 0 20px rgba(244, 63, 94, 0.3); }
+
+        /* Map Dot Pulse */
+        .map-dot {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .map-dot:hover {
+            transform: scale(1.8);
+            z-index: 20;
+            filter: brightness(1.2);
+        }
+        
+        /* Play Overlay */
+        .play-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            cursor: pointer;
+            backdrop-filter: blur(2px);
+        }
+        .relative:hover .play-overlay { opacity: 1; }
+
+        /* Print Styles for Report */
+        @media print {
+            body * { visibility: hidden; }
+            #report-section, #report-section * { visibility: visible; }
+            #report-section { position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; padding: 20px; }
+            .no-print { display: none; }
+            .bg-slate-900 { background-color: #fff !important; color: #000 !important; border-bottom: 2px solid #000; }
+            .text-white { color: #000 !important; }
+            .text-slate-300, .text-slate-400, .text-slate-500 { color: #333 !important; }
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-slate-300 font-sans antialiased selection:bg-brand-primary selection:text-white">
+
+    <!-- NAVIGATION -->
+    <nav class="fixed w-full z-50 glass border-b border-slate-800/50 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center gap-3 group cursor-pointer">
+                    <div class="w-10 h-10 bg-gradient-to-br from-brand-primary to-indigo-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-all duration-300">
+                        <i class="fa-solid fa-road"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-white font-bold text-lg tracking-tight font-mono leading-none">CODE</span>
+                        <span class="text-brand-primary font-bold text-lg tracking-tight font-mono leading-none">ROCKERZ</span>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-8">
+                        <a href="#home" class="text-white hover:text-brand-primary hover:bg-white/5 px-3 py-2 rounded-lg text-sm font-medium transition">Home</a>
+                        <a href="#report-section" class="hover:text-brand-primary hover:bg-white/5 px-3 py-2 rounded-lg text-sm font-medium transition hidden" id="nav-report">Audit Report</a>
+                        <a href="#dashboard" class="bg-brand-primary/10 text-brand-primary border border-brand-primary/50 hover:bg-brand-primary hover:text-white px-5 py-2 rounded-full text-sm font-bold transition shadow-[0_0_15px_rgba(99,102,241,0.2)]">Live Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- UPLOAD MODAL -->
+    <div id="upload-modal" class="fixed inset-0 z-[100] hidden transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="closeModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-card border border-slate-700/50 p-8 rounded-3xl w-11/12 max-w-lg shadow-2xl glow-primary ring-1 ring-white/10">
+            
+            <!-- STEP 1: SELECT FILES -->
+                <div id="modal-step-1" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-2xl font-bold text-white font-mono border-l-4 border-brand-primary pl-3">Upload Feeds</h3>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white transition transform hover:rotate-90"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+
+                <div class="mb-6 group">
+                    <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 group-hover:text-brand-primary transition">1. Base Video (Reference)</label>
+                    <div class="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-4 group-hover:border-brand-primary group-hover:bg-brand-primary/5 transition cursor-pointer flex items-center justify-between relative overflow-hidden" onclick="document.getElementById('base-input').click()">
+                        <div class="flex items-center gap-3 relative z-10">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white transition"><i class="fa-solid fa-film"></i></div>
+                            <span id="base-filename" class="text-slate-300 text-sm font-mono truncate max-w-[200px]">Select Base Video...</span>
+                        </div>
+                        <i class="fa-solid fa-upload text-slate-600 group-hover:text-brand-primary transition relative z-10"></i>
+                    </div>
+                    <input type="file" id="base-input" class="hidden" accept="video/*" onchange="updateFilename('base')">
+                </div>
+
+                <div class="mb-6 group">
+                    <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 group-hover:text-brand-primary transition">2. Present Video (Current)</label>
+                    <div class="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-4 group-hover:border-brand-primary group-hover:bg-brand-primary/5 transition cursor-pointer flex items-center justify-between relative overflow-hidden" onclick="document.getElementById('present-input').click()">
+                        <div class="flex items-center gap-3 relative z-10">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white transition"><i class="fa-solid fa-film"></i></div>
+                            <span id="present-filename" class="text-slate-300 text-sm font-mono truncate max-w-[200px]">Select Present Video...</span>
+                        </div>
+                        <i class="fa-solid fa-upload text-slate-600 group-hover:text-brand-primary transition relative z-10"></i>
+                    </div>
+                    <input type="file" id="present-input" class="hidden" accept="video/*" onchange="updateFilename('present')">
+                </div>
+
+                <button id="analyze-btn" onclick="startProcessing()" disabled class="w-full mt-6 bg-slate-800 text-slate-500 cursor-not-allowed px-6 py-3 rounded-xl font-bold text-lg transition hover:bg-slate-700 disabled:hover:bg-slate-800">
+                    <i class="fa-solid fa-play mr-2"></i>Analyze Videos
+                </button>
+            </div>
+
+            <!-- STEP 2: PROCESSING (TERMINAL STYLE) -->
+            <div class="hidden" id="modal-step-2">
+                <div class="text-center mb-6">
+                    <div class="inline-block relative">
+                        <div class="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+                        <div class="absolute inset-0 flex items-center justify-center text-brand-primary text-xs font-bold font-mono animate-pulse">AI</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mt-4 font-mono">Processing Feed...</h3>
+                    <p class="text-xs text-slate-400 font-mono mt-1" id="processing-details">Handshaking...</p>
+                </div>
+                
+                <div class="space-y-4 mb-6 px-2">
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold uppercase text-slate-500 mb-1"><span>GPS Sync</span><span id="status-1" class="text-slate-600">Waiting</span></div>
+                        <div class="h-1 bg-slate-800 rounded-full overflow-hidden"><div id="bar-1" class="h-full bg-brand-accent w-0 transition-all duration-700 ease-out shadow-[0_0_10px_#10b981]"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold uppercase text-slate-500 mb-1"><span>YOLOv8 Detection</span><span id="status-2" class="text-slate-600">Waiting</span></div>
+                        <div class="h-1 bg-slate-800 rounded-full overflow-hidden"><div id="bar-2" class="h-full bg-brand-primary w-0 transition-all duration-700 ease-out shadow-[0_0_10px_#6366f1]"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold uppercase text-slate-500 mb-1"><span>Deterioration Analysis</span><span id="status-3" class="text-slate-600">Waiting</span></div>
+                        <div class="h-1 bg-slate-800 rounded-full overflow-hidden"><div id="bar-3" class="h-full bg-brand-warning w-0 transition-all duration-700 ease-out shadow-[0_0_10px_#f59e0b]"></div></div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-black rounded-xl border border-slate-800 text-[10px] font-mono text-green-500 text-left h-32 overflow-hidden relative shadow-inner" id="terminal">
+                    <div class="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-black/50"></div>
+                    <div id="logs" class="space-y-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HERO SECTION -->
+    <section id="home" class="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-20">
+        <!-- Background Elements -->
+        <div class="absolute inset-0 bg-brand-dark">
+            <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#6366f1 1px, transparent 1px); background-size: 40px 40px;"></div>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-brand-primary/20 rounded-full blur-[120px] -z-10"></div>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
+            <div class="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-brand-primary font-medium mb-10 backdrop-blur-md animate-float hover:bg-white/10 transition cursor-default">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-primary"></span>
+                </span>
+                National Road Safety Hackathon 2025
+            </div>
+            
+            <h1 class="text-6xl md:text-8xl font-black text-white tracking-tighter mb-8 leading-tight">
+                PREDICT.<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary via-purple-500 to-brand-danger">PREVENT.</span>
+                PROTECT.
+            </h1>
+            
+            <p class="mt-6 max-w-2xl mx-auto text-xl md:text-2xl text-slate-400 font-light leading-relaxed">
+                The first AI-powered <strong>Comparative Analysis Engine</strong> that detects road defects and predicts infrastructure failure before accidents happen.
+            </p>
+            
+            <div class="mt-12 flex flex-col sm:flex-row justify-center gap-5">
+                <button onclick="openModal()" class="group relative px-8 py-5 bg-white text-brand-dark font-bold text-lg rounded-2xl hover:scale-105 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.3)] overflow-hidden">
+                    <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-slate-200 to-transparent -translate-x-full group-hover:animate-scan opacity-50"></div>
+                    <span class="relative flex items-center gap-3"><i class="fa-solid fa-cloud-arrow-up"></i> Launch Analysis</span>
+                </button>
+                <a href="#dashboard" class="px-8 py-5 bg-white/5 text-white font-bold text-lg rounded-2xl border border-white/10 hover:bg-white/10 transition-all duration-300 backdrop-blur-md flex items-center gap-3 justify-center">
+                    <i class="fa-solid fa-laptop-code"></i> Live Demo
+                </a>
+            </div>
+
+            <!-- Tech Stack Badges -->
+            <div class="mt-20 pt-10 border-t border-white/5 flex justify-center gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                <div class="flex flex-col items-center gap-2"><i class="fa-brands fa-python text-3xl"></i><span class="text-xs font-mono">Python</span></div>
+                <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-brain text-3xl"></i><span class="text-xs font-mono">YOLOv8</span></div>
+                <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-microchip text-3xl"></i><span class="text-xs font-mono">TensorFlow</span></div>
+                <div class="flex flex-col items-center gap-2"><i class="fa-solid fa-layer-group text-3xl"></i><span class="text-xs font-mono">OpenCV</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LIVE DASHBOARD SECTION -->
+    <section id="dashboard" class="py-20 bg-brand-dark">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-6xl font-black text-white tracking-tighter mb-6">
+                    LIVE <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">DASHBOARD</span>
+                </h2>
+                <p class="text-xl text-slate-400 max-w-3xl mx-auto">
+                    Real-time monitoring of road safety metrics powered by our AI Comparative Analysis Engine.
+                </p>
+            </div>
+
+            <!-- Real-Time Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+                <div class="glass p-6 rounded-2xl text-center glow-primary">
+                    <div class="w-12 h-12 bg-brand-primary rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-car-crash text-white text-xl"></i>
+                    </div>
+                    <div class="text-3xl font-black text-white mb-1" id="accidents-count">247</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider">Accidents This Month</div>
+                </div>
+                <div class="glass p-6 rounded-2xl text-center glow-danger">
+                    <div class="w-12 h-12 bg-brand-danger rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-exclamation-triangle text-white text-xl"></i>
+                    </div>
+                    <div class="text-3xl font-black text-white mb-1" id="defects-count">1,203</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider">Road Defects Detected</div>
+                </div>
+                <div class="glass p-6 rounded-2xl text-center glow-primary">
+                    <div class="w-12 h-12 bg-brand-accent rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-route text-white text-xl"></i>
+                    </div>
+                    <div class="text-3xl font-black text-white mb-1" id="km-monitored">15,847</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider">KM Monitored</div>
+                </div>
+                <div class="glass p-6 rounded-2xl text-center glow-primary">
+                    <div class="w-12 h-12 bg-brand-warning rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-clock text-white text-xl"></i>
+                    </div>
+                    <div class="text-3xl font-black text-white mb-1" id="response-time">2.3s</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider">Avg Response Time</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+                <!-- Accident Trends Chart -->
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-xl font-bold text-white mb-6 font-mono">Accident Trends (Last 12 Months)</h3>
+                    <canvas id="accidentChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Defect Types Chart -->
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-xl font-bold text-white mb-6 font-mono">Defect Detection Breakdown</h3>
+                    <canvas id="defectChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Map View -->
+            <div class="glass p-6 rounded-2xl">
+                <h3 class="text-xl font-bold text-white mb-6 font-mono">Live Road Network Monitoring</h3>
+                <div id="map-container" class="relative bg-slate-900 rounded-xl overflow-hidden h-96">
+                    <!-- Simulated Map Background -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900">
+                        <div class="absolute inset-0 opacity-30" style="background-image: radial-gradient(circle at 20% 50%, #6366f1 2px, transparent 2px), radial-gradient(circle at 80% 20%, #10b981 2px, transparent 2px), radial-gradient(circle at 40% 80%, #f59e0b 2px, transparent 2px); background-size: 50px 50px;"></div>
+                    </div>
+
+                    <!-- Road Lines -->
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 300">
+                        <path d="M50 150 Q200 100 350 150" stroke="#475569" stroke-width="4" fill="none" stroke-dasharray="10,5"/>
+                        <path d="M50 180 Q200 130 350 180" stroke="#475569" stroke-width="4" fill="none" stroke-dasharray="10,5"/>
+                    </svg>
+
+                    <!-- Incident Dots -->
+                    <div class="absolute top-1/4 left-1/4 map-dot w-4 h-4 bg-brand-danger rounded-full shadow-lg cursor-pointer" data-tooltip="Pothole Detected - NH-45" data-details='{"type":"Pothole","location":"NH-45","severity":"High","deterioration":"30% increase in 12 months","prediction":"Will require repair in 6 months"}'></div>
+                    <div class="absolute top-1/3 right-1/3 map-dot w-4 h-4 bg-brand-warning rounded-full shadow-lg cursor-pointer" data-tooltip="Crack Detected - SH-123" data-details='{"type":"Crack","location":"SH-123","severity":"Medium","deterioration":"15% expansion in 12 months","prediction":"Will widen significantly in 12 months"}'></div>
+                    <div class="absolute bottom-1/4 left-1/2 map-dot w-4 h-4 bg-brand-accent rounded-full shadow-lg cursor-pointer" data-tooltip="Surface Wear - MH-67" data-details='{"type":"Surface Wear","location":"MH-67","severity":"Low","deterioration":"5% wear in 12 months","prediction":"Minor maintenance needed in 18 months"}'></div>
+                    <div class="absolute top-1/2 right-1/4 map-dot w-4 h-4 bg-brand-primary rounded-full shadow-lg cursor-pointer" data-tooltip="Recent Accident - NH-8" data-details='{"type":"Recent Accident","location":"NH-8","severity":"Critical","deterioration":"N/A","prediction":"High risk area - immediate intervention required"}'></div>
+
+                    <!-- Tooltip -->
+                    <div id="map-tooltip" class="absolute bg-black/80 text-white px-3 py-2 rounded-lg text-sm pointer-events-none opacity-0 transition-opacity duration-200 z-10"></div>
+                </div>
+            </div>
+
+            <!-- Predictive Deterioration Section -->
+            <div class="glass p-6 rounded-2xl mt-8">
+                <h3 class="text-xl font-bold text-white mb-6 font-mono">Predictive Deterioration Analysis</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-800/50 p-4 rounded-lg">
+                        <h4 class="text-lg font-bold text-brand-primary mb-2">Road Marking Fade Rate</h4>
+                        <p class="text-slate-300 text-sm mb-2">Current deterioration: 30% in 12 months</p>
+                        <p class="text-slate-400 text-sm">Prediction: 100% non-visible in 8 months</p>
+                        <div class="mt-2 bg-slate-700 rounded-full h-2">
+                            <div class="bg-brand-danger h-2 rounded-full" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 p-4 rounded-lg">
+                        <h4 class="text-lg font-bold text-brand-warning mb-2">Pothole Growth Rate</h4>
+                        <p class="text-slate-300 text-sm mb-2">Current deterioration: 25% increase in 6 months</p>
+                        <p class="text-slate-400 text-sm">Prediction: Critical size in 4 months</p>
+                        <div class="mt-2 bg-slate-700 rounded-full h-2">
+                            <div class="bg-brand-warning h-2 rounded-full" style="width: 60%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GENERATED REPORT SECTION (VISIBLE FOR TESTING) -->
+    <section id="report-section" class="py-20 bg-slate-100 border-y-8 border-brand-primary">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Paper Effect Container -->
+            <div class="bg-white shadow-2xl shadow-slate-900/20 rounded-xl overflow-hidden">
+                
+                <!-- Report Header -->
+                <div class="bg-slate-900 text-white p-10 flex flex-col md:flex-row justify-between items-center border-b-4 border-brand-danger relative overflow-hidden">
+                    <!-- Watermark -->
+                    <div class="absolute -right-10 -top-10 text-9xl text-white/5 rotate-12 font-black pointer-events-none">CONFIDENTIAL</div>
+                    
+                    <div class="flex items-center gap-6 z-10">
+                        <div class="w-16 h-16 bg-brand-danger rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-red-500/30 animate-pulse-slow">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-4xl font-black font-mono tracking-tighter">AUDIT REPORT</h2>
+                            <p class="text-slate-400 text-sm mt-1 font-mono">REF: CR-2025-HKTN-01 | AUTOMATED GENERATION</p>
+                        </div>
+                    </div>
+                    <div class="text-right mt-6 md:mt-0 z-10">
+                        <div class="inline-block px-4 py-2 bg-red-600 text-white font-bold rounded text-sm mb-2 shadow">CRITICAL PRIORITY</div>
+                        <div class="text-xs text-slate-400 uppercase tracking-wider font-bold">Code Rockerz AI Core</div>
+                    </div>
+                </div>
+                
+                <!-- Report Meta -->
+                <div class="p-10 bg-slate-50 border-b border-slate-200">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                        <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                            <div class="text-slate-500 text-xs uppercase font-bold mb-1">Date of Audit</div>
+                            <div class="font-mono font-bold text-lg text-slate-800" id="report-date"></div>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                            <div class="text-slate-500 text-xs uppercase font-bold mb-1">Zone ID</div>
+                            <div class="font-mono font-bold text-lg text-slate-800">NH-45-South</div>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                            <div class="text-slate-500 text-xs uppercase font-bold mb-1">Input Source</div>
+                            <div class="font-mono font-bold text-lg text-slate-800 truncate" id="report-files"></div>
+                        </div>
+                    </div>
+
+                    <!-- Road Description Section -->
+                    <div class="mt-6 p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
+                        <h4 class="text-lg font-bold text-slate-800 mb-4">Road Description & Context</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-slate-600 text-sm font-bold mb-2">Road Type & Classification</label>
+                                <p class="text-slate-800">National Highway 45 (NH-45) - Major arterial road connecting industrial zones</p>
+                            </div>
+                            <div>
+                                <label class="block text-slate-600 text-sm font-bold mb-2">Traffic Volume</label>
+                                <p class="text-slate-800">High traffic density: 25,000+ vehicles/day (peak hours)</p>
+                            </div>
+                            <div>
+                                <label class="block text-slate-600 text-sm font-bold mb-2">Geographical Features</label>
+                                <p class="text-slate-800">Urban-rural transition zone with multiple intersections and commercial areas</p>
+                            </div>
+                            <div>
+                                <label class="block text-slate-600 text-sm font-bold mb-2">Weather Conditions</label>
+                                <p class="text-slate-800">Tropical climate with heavy monsoon rainfall and high humidity</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-slate-600 text-sm font-bold mb-2">Additional Context</label>
+                            <p class="text-slate-700 text-sm">This section of NH-45 serves as a critical transportation corridor for industrial and commercial traffic. The road experiences heavy wear due to high axle loads from commercial vehicles and frequent monsoon-related deterioration. Recent development in the area has increased traffic volume by 35% over the past 2 years.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-10">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-6">Infrastructure Analysis Report</h3>
+
+                    <!-- Road Markings Analysis -->
+                    <div class="mb-8">
+                        <h4 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-road text-brand-primary mr-3"></i>
+                            Road Markings Analysis
+                        </h4>
+                        <div class="bg-slate-50 p-6 rounded-lg border-l-4 border-brand-primary">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Base Video (Reference)</h5>
+                                    <p class="text-slate-600 text-sm">Clear, well-defined lane markings with 95% visibility</p>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Present Video (Current)</h5>
+                                    <p class="text-slate-600 text-sm">30% deterioration detected - fading and peeling observed</p>
+                                </div>
+                            </div>
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                                <div class="flex items-center mb-2">
+                                    <i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>
+                                    <span class="font-bold text-red-700">Critical Finding</span>
+                                </div>
+                                <p class="text-red-700 text-sm">Road markings showing significant wear. At current deterioration rate, 100% non-visible in 8 months. Requires immediate repainting to maintain IRC standards.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Road Signs Analysis -->
+                    <div class="mb-8">
+                        <h4 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-signs-post text-brand-warning mr-3"></i>
+                            Road Signs Analysis
+                        </h4>
+                        <div class="bg-slate-50 p-6 rounded-lg border-l-4 border-brand-warning">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Base Video (Reference)</h5>
+                                    <p class="text-slate-600 text-sm">All road signs clearly visible and properly positioned</p>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Present Video (Current)</h5>
+                                    <p class="text-slate-600 text-sm">Speed limit sign partially obstructed by vegetation</p>
+                                </div>
+                            </div>
+                            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                <div class="flex items-center mb-2">
+                                    <i class="fa-solid fa-exclamation-triangle text-yellow-500 mr-2"></i>
+                                    <span class="font-bold text-yellow-700">Warning</span>
+                                </div>
+                                <p class="text-yellow-700 text-sm">Road sign visibility compromised by overgrown vegetation. Recommend immediate clearance and sign maintenance.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pavement Conditions Analysis -->
+                    <div class="mb-8">
+                        <h4 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-road-barrier text-brand-danger mr-3"></i>
+                            Pavement Conditions Analysis
+                        </h4>
+                        <div class="bg-slate-50 p-6 rounded-lg border-l-4 border-brand-danger">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Base Video (Reference)</h5>
+                                    <p class="text-slate-600 text-sm">Smooth pavement surface with minor surface wear</p>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Present Video (Current)</h5>
+                                    <p class="text-slate-600 text-sm">Multiple potholes detected, 25% size increase in 6 months</p>
+                                </div>
+                            </div>
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                                <div class="flex items-center mb-2">
+                                    <i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>
+                                    <span class="font-bold text-red-700">Critical Finding</span>
+                                </div>
+                                <p class="text-red-700 text-sm">Severe pothole formation detected. Current growth rate indicates critical size in 4 months. Immediate repair required to prevent accident escalation.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Road Studs Analysis -->
+                    <div class="mb-8">
+                        <h4 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-circle-dot text-brand-accent mr-3"></i>
+                            Road Studs (Cat's Eyes) Analysis
+                        </h4>
+                        <div class="bg-slate-50 p-6 rounded-lg border-l-4 border-brand-accent">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Base Video (Reference)</h5>
+                                    <p class="text-slate-600 text-sm">All road studs present and reflective</p>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Present Video (Current)</h5>
+                                    <p class="text-slate-600 text-sm">15% of road studs missing or non-reflective</p>
+                                </div>
+                            </div>
+                            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                <div class="flex items-center mb-2">
+                                    <i class="fa-solid fa-exclamation-triangle text-yellow-500 mr-2"></i>
+                                    <span class="font-bold text-yellow-700">Warning</span>
+                                </div>
+                                <p class="text-yellow-700 text-sm">Road studs showing wear and loss. Reduced nighttime visibility detected. Schedule replacement within 3 months.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Roadside Hazards Analysis -->
+                    <div class="mb-8">
+                        <h4 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                            <i class="fa-solid fa-tree text-slate-600 mr-3"></i>
+                            Roadside Hazards Analysis
+                        </h4>
+                        <div class="bg-slate-50 p-6 rounded-lg border-l-4 border-slate-600">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Base Video (Reference)</h5>
+                                    <p class="text-slate-600 text-sm">Clear roadside with proper barriers</p>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 mb-2">Present Video (Current)</h5>
+                                    <p class="text-slate-600 text-sm">Overgrown vegetation blocking visibility</p>
+                                </div>
+                            </div>
+                            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                <div class="flex items-center mb-2">
+                                    <i class="fa-solid fa-exclamation-triangle text-yellow-500 mr-2"></i>
+                                    <span class="font-bold text-yellow-700">Warning</span>
+                                </div>
+                                <p class="text-yellow-700 text-sm">Roadside vegetation encroachment detected. Visibility compromised at curves. Immediate clearance required for safety.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary and Recommendations -->
+                    <div class="mt-10 p-6 bg-slate-100 rounded-lg">
+                        <h4 class="text-xl font-bold text-slate-800 mb-4">Executive Summary & Recommendations</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h5 class="font-bold text-slate-700 mb-2">Priority Actions Required:</h5>
+                                <ul class="text-slate-600 text-sm space-y-1">
+                                    <li>• Immediate pothole repair (NH-45)</li>
+                                    <li>• Road marking repainting (critical)</li>
+                                    <li>• Vegetation clearance (visibility)</li>
+                                    <li>• Road sign maintenance</li>
+                                    <li>• Road stud replacement (3 months)</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-slate-700 mb-2">Risk Assessment:</h5>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Accident Risk:</span>
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">HIGH</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Infrastructure Health:</span>
+                                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">MODERATE</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 text-xs text-slate-500 border-t pt-4 flex justify-between items-center">
+                        <div>
+                            <p><strong>Analysis Method:</strong> Comparative AI analysis using YOLOv8 object detection and OpenCV image processing</p>
+                            <p><strong>Report Generated:</strong> <span id="report-timestamp"></span></p>
+                            <p><strong>AI Confidence:</strong> 94.7% detection accuracy</p>
+                        </div>
+                        <button onclick="downloadReport()" class="bg-brand-primary hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-download"></i> Download PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<script>
+// Minimal JS to implement missing interactions: modal, file handling, simulated processing, report population
+let baseFile = null;
+let presentFile = null;
+
+function openModal(){
+    const modal = document.getElementById('upload-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('modal-step-1').classList.remove('hidden');
+    document.getElementById('modal-step-2').classList.add('hidden');
+}
+
+function closeModal(){
+    const modal = document.getElementById('upload-modal');
+    modal.classList.add('hidden');
+}
+
+function updateFilename(type){
+    const input = document.getElementById(type + '-input');
+    const span = document.getElementById(type + '-filename');
+    if(input && input.files && input.files[0]){
+        span.textContent = input.files[0].name;
+        if(type === 'base') baseFile = input.files[0]; else presentFile = input.files[0];
+    } else {
+        span.textContent = type === 'base' ? 'Select Base Video...' : 'Select Present Video...';
+        if(type === 'base') baseFile = null; else presentFile = null;
+    }
+    const analyzeBtn = document.getElementById('analyze-btn');
+    if(baseFile && presentFile){
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('cursor-not-allowed','bg-slate-800','text-slate-500');
+        analyzeBtn.classList.add('bg-brand-primary','text-white','cursor-pointer');
+    } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('cursor-not-allowed');
+        analyzeBtn.classList.remove('bg-brand-primary','text-white');
+    }
+}
+
+function appendLog(message){
+    const logs = document.getElementById('logs');
+    if(!logs) return;
+    const el = document.createElement('div');
+    el.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+    logs.appendChild(el);
+    // keep terminal scrolled to bottom
+    const terminal = document.getElementById('terminal');
+    if(terminal) terminal.scrollTop = terminal.scrollHeight;
+}
+
+function startProcessing(){
+    if(!baseFile || !presentFile) return;
+    // switch to step 2
+    document.getElementById('modal-step-1').classList.add('hidden');
+    document.getElementById('modal-step-2').classList.remove('hidden');
+    document.getElementById('processing-details').textContent = 'Initializing AI Core...';
+    document.getElementById('logs').innerHTML = '';
+
+    appendLog('AI Core booting...');
+
+    // simulated sequential tasks
+    const tasks = [
+        {id:1, title: 'GPS Sync', statusId: 'status-1', barId: 'bar-1', detail: 'Syncing GPS data...'},
+        {id:2, title: 'YOLOv8 Detection', statusId: 'status-2', barId: 'bar-2', detail: 'Running object detection...'},
+        {id:3, title: 'Deterioration Analysis', statusId: 'status-3', barId: 'bar-3', detail: 'Analyzing surface defects...'}
+    ];
+
+    let idx = 0;
+    function runNext(){
+        if(idx >= tasks.length){
+            finalizeProcessing();
+            return;
+        }
+        const t = tasks[idx];
+        document.getElementById(t.statusId).textContent = 'Running';
+        document.getElementById('processing-details').textContent = t.detail;
+        appendLog(t.title + ' started');
+        let progress = 0;
+        const bar = document.getElementById(t.barId);
+        if(bar) bar.style.width = '0%';
+        const timer = setInterval(() => {
+            // increment randomly to feel dynamic
+            progress += Math.floor(Math.random() * 20) + 5;
+            if(progress > 100) progress = 100;
+            if(bar) bar.style.width = progress + '%';
+            if(progress >= 100){
+                clearInterval(timer);
+                document.getElementById(t.statusId).textContent = 'Completed';
+                appendLog(t.title + ' completed');
+                idx++;
+                setTimeout(runNext, 500);
+            }
+        }, 400);
+    }
+    runNext();
+}
+
+function finalizeProcessing(){
+    appendLog('Finalizing and packaging results...');
+    document.getElementById('processing-details').textContent = 'Finalizing...';
+    setTimeout(() => {
+        appendLog('Processing complete. Report generated.');
+        document.getElementById('processing-details').textContent = 'Completed';
+        // populate report meta
+        const reportDate = document.getElementById('report-date');
+        const reportFiles = document.getElementById('report-files');
+        if(reportDate) reportDate.textContent = (new Date()).toLocaleString();
+        if(reportFiles) reportFiles.textContent = (baseFile ? baseFile.name : '') + ' | ' + (presentFile ? presentFile.name : '');
+        // populate report timestamp
+        const timestampEl = document.getElementById('report-timestamp');
+        if(timestampEl) timestampEl.textContent = new Date().toLocaleString();
+        // reveal nav link and report section
+        const navReport = document.getElementById('nav-report');
+        if(navReport) navReport.classList.remove('hidden');
+        const reportSection = document.getElementById('report-section');
+        if(reportSection) reportSection.classList.remove('hidden');
+        // close modal and scroll to report
+        closeModal();
+        setTimeout(()=>{
+            document.getElementById('report-section').scrollIntoView({behavior: 'smooth'});
+        }, 200);
+    }, 900);
+}
+
+// Function to close detail modal
+function closeDetailModal() {
+    const modal = document.getElementById('detail-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Optional: close modal with ESC
+window.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') {
+        closeModal();
+        closeDetailModal();
+    }
+});
+
+// Dashboard Charts and Interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Accident Trends Chart
+    const accidentCtx = document.getElementById('accidentChart').getContext('2d');
+    new Chart(accidentCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [{
+                label: 'Accidents',
+                data: [45, 52, 38, 61, 55, 43, 67, 58, 72, 49, 63, 47],
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#94a3b8' }
+                },
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#94a3b8' }
+                }
+            }
+        }
+    });
+
+    // Defect Types Chart
+    const defectCtx = document.getElementById('defectChart').getContext('2d');
+    new Chart(defectCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Potholes', 'Cracks', 'Surface Wear', 'Edge Damage'],
+            datasets: [{
+                data: [35, 25, 20, 20],
+                backgroundColor: ['#f43f5e', '#f59e0b', '#10b981', '#6366f1'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#94a3b8' }
+                }
+            }
+        }
+    });
+
+    // Map Tooltip Functionality (robust selectors + toggle opacity classes)
+    const mapDots = document.querySelectorAll('.map-dot');
+    const tooltip = document.getElementById('map-tooltip');
+    const mapContainer = document.getElementById('map-container');
+
+    if (tooltip && mapContainer && mapDots.length) {
+        mapDots.forEach(dot => {
+            dot.addEventListener('mouseenter', (e) => {
+                const tooltipText = dot.getAttribute('data-tooltip') || '';
+                tooltip.textContent = tooltipText;
+                const rect = mapContainer.getBoundingClientRect();
+                // position tooltip inside container
+                const left = Math.min(Math.max(e.clientX - rect.left + 10, 8), rect.width - 120);
+                const top = Math.min(Math.max(e.clientY - rect.top - 40, 8), rect.height - 32);
+                tooltip.style.left = left + 'px';
+                tooltip.style.top = top + 'px';
+                tooltip.classList.remove('opacity-0');
+                tooltip.classList.add('opacity-100');
+            });
+
+            dot.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('opacity-100');
+                tooltip.classList.add('opacity-0');
+            });
+
+            // Add click functionality for detailed view
+            dot.addEventListener('click', () => {
+                const details = JSON.parse(dot.getAttribute('data-details') || '{}');
+                showDetailModal(details);
+            });
+        });
+    }
+
+    // Function to show detailed modal
+    function showDetailModal(details) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('detail-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'detail-modal';
+            modal.className = 'fixed inset-0 z-[200] hidden transition-opacity duration-300';
+            modal.innerHTML = `
+                <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="closeDetailModal()"></div>
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-card border border-slate-700/50 p-8 rounded-3xl w-11/12 max-w-lg shadow-2xl glow-primary ring-1 ring-white/10">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-white font-mono border-l-4 border-brand-primary pl-3" id="detail-title">Defect Details</h3>
+                        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white transition transform hover:rotate-90"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    <div id="detail-content" class="space-y-4">
+                        <!-- Content will be populated here -->
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Add event listener to the close button after modal is created
+        const closeBtn = modal.querySelector('button[onclick="closeDetailModal()"]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeDetailModal);
+        }
+
+        // Populate modal content
+        document.getElementById('detail-title').textContent = `${details.type} - ${details.location}`;
+        const content = document.getElementById('detail-content');
+        content.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-800/50 p-4 rounded-lg">
+                    <div class="text-slate-400 text-sm">Severity</div>
+                    <div class="text-white font-bold text-lg">${details.severity}</div>
+                </div>
+                <div class="bg-slate-800/50 p-4 rounded-lg">
+                    <div class="text-slate-400 text-sm">Location</div>
+                    <div class="text-white font-bold text-lg">${details.location}</div>
+                </div>
+            </div>
+            <div class="bg-slate-800/50 p-4 rounded-lg">
+                <div class="text-slate-400 text-sm mb-2">Current Deterioration</div>
+                <div class="text-white font-bold">${details.deterioration}</div>
+            </div>
+            <div class="bg-slate-800/50 p-4 rounded-lg">
+                <div class="text-slate-400 text-sm mb-2">Future Prediction</div>
+                <div class="text-white font-bold">${details.prediction}</div>
+            </div>
+            <div class="bg-slate-800/50 p-4 rounded-lg">
+                <div class="text-slate-400 text-sm mb-2">Visual Comparison</div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <div class="text-xs text-slate-500 mb-1">Base (Reference)</div>
+                        <div class="w-full h-20 bg-slate-700 rounded flex items-center justify-center text-slate-400">
+                            <i class="fa-solid fa-image text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xs text-slate-500 mb-1">Present (Current)</div>
+                        <div class="w-full h-20 bg-slate-700 rounded flex items-center justify-center text-slate-400">
+                            <i class="fa-solid fa-image text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+    }
+
+    // Function to close detail modal
+    function closeDetailModal() {
+        const modal = document.getElementById('detail-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // Simulate live updates (sanitize numbers with non-digits like commas)
+    setInterval(() => {
+        const accidentsEl = document.getElementById('accidents-count');
+        const defectsEl = document.getElementById('defects-count');
+        const kmEl = document.getElementById('km-monitored');
+        const timeEl = document.getElementById('response-time');
+
+        function toNumber(text, isFloat=false){
+            if(!text) return 0;
+            const cleaned = String(text).replace(/[^0-9.\-]+/g, '');
+            return isFloat ? parseFloat(cleaned) || 0 : parseInt(cleaned) || 0;
+        }
+
+        if (accidentsEl) {
+            const next = toNumber(accidentsEl.textContent) + Math.floor(Math.random() * 3);
+            accidentsEl.textContent = next.toLocaleString();
+        }
+        if (defectsEl) {
+            const next = toNumber(defectsEl.textContent) + Math.floor(Math.random() * 5);
+            defectsEl.textContent = next.toLocaleString();
+        }
+        if (kmEl) {
+            const next = toNumber(kmEl.textContent) + Math.floor(Math.random() * 10);
+            kmEl.textContent = next.toLocaleString();
+        }
+        if (timeEl) {
+            const next = (toNumber(timeEl.textContent, true) + (Math.random() - 0.5) * 0.1).toFixed(1);
+            timeEl.textContent = next + 's';
+        }
+    }, 5000);
+
+    // Function to download report as PDF
+    function downloadReport() {
+        const element = document.getElementById('report-section');
+        const opt = {
+            margin: 1,
+            filename: 'road-safety-audit-report.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Show loading state
+        const downloadBtn = document.querySelector('button[onclick="downloadReport()"]');
+        const originalText = downloadBtn.innerHTML;
+        downloadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+        downloadBtn.disabled = true;
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Reset button
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+        }).catch((error) => {
+            console.error('PDF generation failed:', error);
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+            alert('PDF generation failed. Please try again.');
+        });
+    }
+});
+</script>
+
+</body>
+</html>
