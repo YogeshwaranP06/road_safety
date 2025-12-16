@@ -180,6 +180,16 @@
                     <input type="file" id="present-input" class="hidden" accept="video/*" onchange="updateFilename('present')">
                 </div>
 
+                <div class="mb-6 group">
+                    <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 group-hover:text-brand-primary transition">3. Road Location (Pin Point)</label>
+                    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-4 group-hover:border-brand-primary group-hover:bg-brand-primary/5 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white transition"><i class="fa-solid fa-map-marker-alt"></i></div>
+                            <input type="text" id="location-input" placeholder="Enter road name/location (e.g., NH-45, Highway 123)" class="bg-transparent text-slate-300 placeholder-slate-500 text-sm font-mono flex-1 outline-none" onchange="updateLocation()">
+                        </div>
+                    </div>
+                </div>
+
                 <button id="analyze-btn" onclick="startProcessing()" disabled class="w-full mt-6 bg-slate-800 text-slate-500 cursor-not-allowed px-6 py-3 rounded-xl font-bold text-lg transition hover:bg-slate-700 disabled:hover:bg-slate-800">
                     <i class="fa-solid fa-play mr-2"></i>Analyze Videos
                 </button>
@@ -632,10 +642,12 @@
         </div>
     </section>
 
+
 <script>
 // Minimal JS to implement missing interactions: modal, file handling, simulated processing, report population
 let baseFile = null;
 let presentFile = null;
+let roadLocation = null;
 
 function openModal(){
     const modal = document.getElementById('upload-modal');
@@ -659,8 +671,18 @@ function updateFilename(type){
         span.textContent = type === 'base' ? 'Select Base Video...' : 'Select Present Video...';
         if(type === 'base') baseFile = null; else presentFile = null;
     }
+    updateAnalyzeButton();
+}
+
+function updateLocation(){
+    const input = document.getElementById('location-input');
+    roadLocation = input.value.trim();
+    updateAnalyzeButton();
+}
+
+function updateAnalyzeButton(){
     const analyzeBtn = document.getElementById('analyze-btn');
-    if(baseFile && presentFile){
+    if(baseFile && presentFile && roadLocation){
         analyzeBtn.disabled = false;
         analyzeBtn.classList.remove('cursor-not-allowed','bg-slate-800','text-slate-500');
         analyzeBtn.classList.add('bg-brand-primary','text-white','cursor-pointer');
@@ -682,8 +704,12 @@ function appendLog(message){
     if(terminal) terminal.scrollTop = terminal.scrollHeight;
 }
 
+
 function startProcessing(){
     if(!baseFile || !presentFile) return;
+    
+    console.log('Starting processing with:', { baseFile: baseFile?.name, presentFile: presentFile?.name, location: roadLocation });
+    
     // switch to step 2
     document.getElementById('modal-step-1').classList.add('hidden');
     document.getElementById('modal-step-2').classList.remove('hidden');
@@ -700,60 +726,236 @@ function startProcessing(){
     ];
 
     let idx = 0;
+    
+    // Add global timeout to prevent indefinite processing
+    const globalTimeout = setTimeout(() => {
+        console.log('Global timeout reached - forcing processing completion');
+        appendLog('Processing timeout - forcing completion');
+        finalizeProcessing();
+    }, 15000); // 15 seconds max
+    
     function runNext(){
+        console.log('Running task:', idx, 'of', tasks.length);
+        
         if(idx >= tasks.length){
+            clearTimeout(globalTimeout);
             finalizeProcessing();
             return;
         }
         const t = tasks[idx];
-        document.getElementById(t.statusId).textContent = 'Running';
+        console.log('Processing task:', t.title);
+        
+        // Update status
+        const statusEl = document.getElementById(t.statusId);
+        if(statusEl) statusEl.textContent = 'Running';
+        
         document.getElementById('processing-details').textContent = t.detail;
         appendLog(t.title + ' started');
+        
         let progress = 0;
         const bar = document.getElementById(t.barId);
         if(bar) bar.style.width = '0%';
+        
+
+        let iterations = 0;
+        const maxIterations = 15; // Prevent infinite loops
         const timer = setInterval(() => {
-            // increment randomly to feel dynamic
-            progress += Math.floor(Math.random() * 20) + 5;
-            if(progress > 100) progress = 100;
-            if(bar) bar.style.width = progress + '%';
+            iterations++;
+            console.log(`Task ${t.title} - Progress: ${progress}%, Iterations: ${iterations}/${maxIterations}`);
+            
+            // Ensure progress reaches 100% by maxIterations
+            if (iterations >= maxIterations) {
+                progress = 100;
+                console.log(`Task ${t.title} - Force completing at 100%`);
+            } else {
+                // Linear progression to ensure completion
+                progress = (iterations / maxIterations) * 100;
+                // Add small random variation for realistic feel
+                const randomVariation = Math.random() * 8 - 4; // -4 to +4
+                progress = Math.max(0, Math.min(100, progress + randomVariation));
+            }
+            
+            if(bar) bar.style.width = Math.round(progress) + '%';
+            
             if(progress >= 100){
                 clearInterval(timer);
-                document.getElementById(t.statusId).textContent = 'Completed';
+                console.log(`Task ${t.title} - Timer cleared, moving to next task`);
+                if(statusEl) statusEl.textContent = 'Completed';
                 appendLog(t.title + ' completed');
                 idx++;
-                setTimeout(runNext, 500);
+                setTimeout(runNext, 300);
             }
-        }, 400);
+        }, 300);
     }
     runNext();
 }
 
+
 function finalizeProcessing(){
     appendLog('Finalizing and packaging results...');
     document.getElementById('processing-details').textContent = 'Finalizing...';
+    
+    // Add a timeout to ensure processing always completes
     setTimeout(() => {
-        appendLog('Processing complete. Report generated.');
-        document.getElementById('processing-details').textContent = 'Completed';
-        // populate report meta
-        const reportDate = document.getElementById('report-date');
-        const reportFiles = document.getElementById('report-files');
-        if(reportDate) reportDate.textContent = (new Date()).toLocaleString();
-        if(reportFiles) reportFiles.textContent = (baseFile ? baseFile.name : '') + ' | ' + (presentFile ? presentFile.name : '');
-        // populate report timestamp
-        const timestampEl = document.getElementById('report-timestamp');
-        if(timestampEl) timestampEl.textContent = new Date().toLocaleString();
-        // reveal nav link and report section
-        const navReport = document.getElementById('nav-report');
-        if(navReport) navReport.classList.remove('hidden');
-        const reportSection = document.getElementById('report-section');
-        if(reportSection) reportSection.classList.remove('hidden');
-        // close modal and scroll to report
-        closeModal();
-        setTimeout(()=>{
-            document.getElementById('report-section').scrollIntoView({behavior: 'smooth'});
-        }, 200);
+        try {
+            appendLog('Processing complete. Report generated.');
+            document.getElementById('processing-details').textContent = 'Completed';
+            
+            // populate report meta
+            const reportDate = document.getElementById('report-date');
+            const reportFiles = document.getElementById('report-files');
+            if(reportDate) reportDate.textContent = (new Date()).toLocaleString();
+            if(reportFiles) reportFiles.textContent = (baseFile ? baseFile.name : '') + ' | ' + (presentFile ? presentFile.name : '') + ' | ' + roadLocation;
+            
+            // populate report timestamp
+            const timestampEl = document.getElementById('report-timestamp');
+            if(timestampEl) timestampEl.textContent = new Date().toLocaleString();
+
+            // Update report content based on location and videos
+            updateReportContent();
+
+            // Update map based on location
+            updateMapContent();
+
+            // reveal nav link and report section
+            const navReport = document.getElementById('nav-report');
+            if(navReport) navReport.classList.remove('hidden');
+            const reportSection = document.getElementById('report-section');
+            if(reportSection) reportSection.classList.remove('hidden');
+            
+            // close modal and scroll to report
+            closeModal();
+            setTimeout(()=>{
+                if(document.getElementById('report-section')) {
+                    document.getElementById('report-section').scrollIntoView({behavior: 'smooth'});
+                }
+            }, 200);
+        } catch (error) {
+            console.error('Error in finalizeProcessing:', error);
+            // Force close modal as fallback
+            closeModal();
+        }
     }, 900);
+}
+
+
+
+function updateReportContent(){
+    console.log('=== updateReportContent called ===');
+    console.log('roadLocation:', roadLocation);
+    console.log('Report section exists:', !!document.getElementById('report-section'));
+    
+    // First, ensure the report section is visible
+    const reportSection = document.getElementById('report-section');
+    if(reportSection) {
+        console.log('Making report section visible');
+        reportSection.classList.remove('hidden');
+    }
+    
+    // Update Zone ID based on location
+    const zoneIdEl = document.querySelector('#report-section .grid.grid-cols-1.md\\:grid-cols-3 .p-4.bg-white.border.border-slate-200.rounded-lg.shadow-sm:nth-child(2) .font-mono.font-bold.text-lg.text-slate-800');
+    console.log('Zone ID element:', zoneIdEl);
+    if(zoneIdEl && roadLocation) {
+        zoneIdEl.textContent = roadLocation + '-South';
+        console.log('Updated Zone ID to:', roadLocation + '-South');
+    } else if(!roadLocation) {
+        console.log('No roadLocation provided, keeping default NH-45-South');
+    }
+
+    // Update Road Description based on location
+    const roadTypeEl = document.querySelector('#report-section .grid.grid-cols-1.md\\:grid-cols-2 .p-4.bg-white.border.border-slate-200.rounded-lg.shadow-sm .text-slate-800');
+    console.log('Road type element:', roadTypeEl);
+    if(roadTypeEl && roadLocation) {
+        if(roadLocation.toUpperCase().includes('NH')) {
+            roadTypeEl.textContent = 'National Highway ' + roadLocation.split('-')[1] + ' - Major arterial road connecting industrial zones';
+        } else if(roadLocation.toUpperCase().includes('SH')) {
+            roadTypeEl.textContent = 'State Highway ' + roadLocation.split('-')[1] + ' - State-level road connecting districts';
+        } else {
+            roadTypeEl.textContent = roadLocation + ' - Local road requiring maintenance';
+        }
+        console.log('Updated Road Type to:', roadTypeEl.textContent);
+    } else if(!roadLocation) {
+        console.log('No roadLocation, keeping default road description');
+    }
+
+    // Update additional context based on location
+    const contextEl = document.querySelector('#report-section .mt-4 .text-slate-700.text-sm');
+    console.log('Context element:', contextEl);
+    if(contextEl && roadLocation) {
+        contextEl.textContent = 'This section of ' + roadLocation + ' serves as a critical transportation corridor. The road experiences heavy wear due to high axle loads from commercial vehicles and frequent monsoon-related deterioration. Recent development in the area has increased traffic volume significantly over the past 2 years.';
+        console.log('Updated context for:', roadLocation);
+    } else if(!roadLocation) {
+        console.log('No roadLocation, keeping default context');
+    }
+
+    // Update critical findings based on simulated analysis
+    const criticalFindings = document.querySelectorAll('#report-section .bg-red-50.p-4.rounded-lg.border.border-red-200 .text-red-700.text-sm');
+    console.log('Critical findings found:', criticalFindings.length);
+    if(criticalFindings.length > 0 && roadLocation) {
+        // Simulate different findings based on location
+        const findings = [
+            'Road markings showing significant wear. At current deterioration rate, 100% non-visible in 8 months.',
+            'Severe pothole formation detected. Current growth rate indicates critical size in 4 months.',
+            'Cracks expanding rapidly due to heavy traffic load on ' + roadLocation + '.'
+        ];
+        const randomFinding = findings[Math.floor(Math.random() * findings.length)];
+        criticalFindings[0].textContent = randomFinding + ' Requires immediate repainting to maintain IRC standards.';
+        if(criticalFindings[1]) {
+            criticalFindings[1].textContent = 'Pothole growth rate accelerated on ' + roadLocation + '. Immediate repair required to prevent accident escalation.';
+        }
+        console.log('Updated critical findings');
+    } else if(!roadLocation) {
+        console.log('No roadLocation, keeping default critical findings');
+    }
+
+    // Update recommendations based on location
+    const recommendationsEl = document.querySelector('#report-section .grid.grid-cols-1.md\\:grid-cols-2 .space-y-1');
+    console.log('Recommendations element:', recommendationsEl);
+    if(recommendationsEl && roadLocation) {
+        const liElements = recommendationsEl.querySelectorAll('li');
+        console.log('Recommendation items found:', liElements.length);
+        if(liElements.length > 0) {
+            liElements[0].textContent = 'Immediate pothole repair (' + roadLocation + ')';
+            liElements[1].textContent = 'Road marking repainting (' + roadLocation + ' - critical)';
+            console.log('Updated recommendations for:', roadLocation);
+        }
+    } else if(!roadLocation) {
+        console.log('No roadLocation, keeping default recommendations');
+    }
+    
+    console.log('=== updateReportContent completed ===');
+}
+
+function updateMapContent(){
+    console.log('=== updateMapContent called ===');
+    console.log('roadLocation:', roadLocation);
+    
+    // Update map markers based on location
+    const mapDots = document.querySelectorAll('.map-dot');
+    console.log('Found map dots:', mapDots.length);
+    
+    if(roadLocation && mapDots.length > 0) {
+        // Update the first map dot to reflect the location being analyzed
+        const firstDot = mapDots[0];
+        const tooltipText = `Critical Analysis - ${roadLocation}`;
+        firstDot.setAttribute('data-tooltip', tooltipText);
+        
+        // Update the data-details for the first dot
+        const details = {
+            type: 'Recent Analysis',
+            location: roadLocation,
+            severity: 'Critical',
+            deterioration: 'Under investigation',
+            prediction: 'Full analysis completed - report generated'
+        };
+        firstDot.setAttribute('data-details', JSON.stringify(details));
+        
+        console.log('Updated map marker for:', roadLocation);
+    } else {
+        console.log('No roadLocation or map dots found');
+    }
+    
+    console.log('=== updateMapContent completed ===');
 }
 
 // Function to close detail modal
